@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grant Radar</title>
+<style>
+  :root{
+    --ink:#14213d; --ink-2:#475467; --ink-3:#98a2b3; --line:#e4e7ec; --bg:#f6f5f1; --card:#fff;
+    --brand:#1f5f4a; --brand-2:#2e7d62; --brand-soft:#e7f2ec; --red:#b42318; --red-soft:#fdecea;
+    --amber:#b54708; --amber-soft:#fef4e6; --blue:#1d4ed8; --radius:14px;
+  }
+  *{box-sizing:border-box} [hidden]{display:none !important}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  a{color:var(--blue)}
+  header.top{display:flex;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--line);background:#fff}
+  .logo{width:34px;height:34px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:800}
+  .brand{font-weight:750;font-size:18px;letter-spacing:-.01em}
+  .brand small{display:block;font-weight:500;color:var(--ink-2);font-size:12px;letter-spacing:0}
+  header .spacer{flex:1}
+  main{max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em} h2{font-size:18px;margin:0 0 4px} h3{font-size:15px;margin:0}
+  .muted{color:var(--ink-2)} .tiny{font-size:12px;color:var(--ink-3)}
+  .btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 14px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+  .btn:hover{border-color:#c8ccd4}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff} .btn.primary:hover{background:var(--brand-2)}
+  .btn.ghost{border-color:transparent;background:transparent}
+  .btn:disabled{opacity:.55;cursor:wait}
+  /* wizard */
+  .wizard{max-width:760px;margin:0 auto}
+  .steps{display:flex;gap:6px;margin:0 0 18px}
+  .steps div{flex:1;height:5px;border-radius:5px;background:var(--line)} .steps div.on{background:var(--brand)}
+  .q{margin:20px 0} .q > label,.q .label{display:block;font-weight:650;margin-bottom:6px}
+  .q .hint{font-size:13px;color:var(--ink-2);margin:-2px 0 8px}
+  input[type=text],input[type=email],input[type=number],input[type=date],input[type=url],select,textarea{width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+  textarea{min-height:84px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid #a6d4c2;border-color:var(--brand)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid #d0d5dd;border-radius:999px;padding:7px 13px;cursor:pointer;user-select:none;background:#fff;font-size:14px}
+  .chip.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand);font-weight:600}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .wnav{display:flex;justify-content:space-between;margin-top:26px}
+  /* dashboard */
+  .dash-head{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .stat b{display:block;font-size:26px;letter-spacing:-.02em} .stat span{color:var(--ink-2);font-size:13px}
+  .calbox{background:linear-gradient(135deg,#1f5f4a,#2b7a5f);color:#fff;border-radius:var(--radius);padding:20px 22px;margin-bottom:18px}
+  .calbox .muted{color:#d6ebe2}
+  .calbox .feed{display:flex;gap:8px;margin:12px 0}
+  .calbox input{flex:1;border:0;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .calbox .btn{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff}
+  .calbox .btn:hover{background:rgba(255,255,255,.22)}
+  .calbtns{display:flex;flex-wrap:wrap;gap:8px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 12px}
+  .toolbar input{max-width:260px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{border:0;background:none;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink-2)}
+  .seg button.on{background:var(--ink);color:#fff}
+  .grant{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;display:grid;grid-template-columns:96px 1fr auto;gap:16px;align-items:start}
+  .due{border-radius:12px;padding:8px;text-align:center;background:#f2f4f7}
+  .due b{display:block;font-size:22px;line-height:1.1} .due span{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2)}
+  .due.red{background:var(--red-soft);color:var(--red)} .due.amber{background:var(--amber-soft);color:var(--amber)} .due.none{color:var(--ink-3)}
+  .grant h3 a{color:var(--ink);text-decoration:none} .grant h3 a:hover{text-decoration:underline}
+  .meta{color:var(--ink-2);font-size:13px;margin-top:3px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tag{font-size:12px;padding:2px 8px;border-radius:999px;background:#f2f4f7;color:var(--ink-2)}
+  .tag.strong{background:var(--brand-soft);color:var(--brand);font-weight:600} .tag.new{background:#eef4ff;color:var(--blue);font-weight:600}
+  .tag.fc{background:#f4ebff;color:#6941c6}
+  .summary{font-size:13.5px;color:var(--ink-2);margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .side{display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:150px}
+  .side select{width:150px;padding:7px 10px}
+  .empty{text-align:center;padding:40px;color:var(--ink-2)}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none}
+  .toast.on{opacity:1}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+  .btn:not(.primary) .spinner{border-color:#ccc;border-top-color:var(--ink)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  details.manual{margin-top:26px} details.manual summary{cursor:pointer;font-weight:650}
+  .mform{display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr;gap:8px;margin:12px 0}
+  .mlist .grant{grid-template-columns:96px 1fr auto}
+  .overlay{position:fixed;inset:0;background:rgba(20,33,61,.45);display:none;place-items:center;z-index:5}
+  .overlay.on{display:grid}
+  .overlay .card{max-width:420px;text-align:center}
+  @media (max-width:760px){
+    .stats{grid-template-columns:repeat(2,1fr)} .row2,.mform{grid-template-columns:1fr}
+    .grant{grid-template-columns:72px 1fr} .side{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-start}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="logo">GR</div>
+  <div class="brand">Grant Radar<small>Grants matched to your organization, with deadlines on your calendar</small></div>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="editBtn" hidden>Edit answers</button>
+</header>
+<main id="app"></main>
+<div class="overlay" id="busy"><div class="card"><div class="spinner" style="margin:0 auto 12px;border-color:#ddd;border-top-color:var(--brand);width:28px;height:28px"></div><h2 id="busyTitle">Searching for grants…</h2><p class="muted" id="busyText">Checking Grants.gov against your answers. This can take up to a minute the first time.</p></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => n ? '$' + Number(n).toLocaleString('en-US') : '';
+const STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA PR RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');
+
+let OPTS = null, VIEW = null, step = 0, filter = 'all', query = '';
+let draft = { orgTypes: ['nonprofit501c3'], focusAreas: [], populations: [], keywords: [], reminders: [14,7,1],
+  horizonDays: 365, minDaysLeft: 7, minAward: 0, includeForecasted: true, includeRolling: false, digestMode: 'daily' };
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2200); }
+function busy(on, title, text){ $('#busy').classList.toggle('on', on); if(title) $('#busyTitle').textContent=title; if(text) $('#busyText').textContent=text; }
+
+async function api(method, url, body){
+  const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || ('Request failed: ' + r.status));
+  return j;
+}
+
+function tokenFromUrl(){ return new URLSearchParams(location.search).get('org'); }
+function storedToken(){ try { return localStorage.getItem('grantRadarOrg'); } catch(e){ return null; } }
+function rememberToken(t){ try { localStorage.setItem('grantRadarOrg', t); } catch(e){} history.replaceState(null,'','?org='+t); }
+
+// ---------------- Wizard ----------------
+const STEPS = [
+  { title: 'About your organization', sub: 'This decides which grants you are actually eligible for.', render: () => `
+    <div class="q"><label for="orgName">Organization name</label><input type="text" id="orgName" value="${esc(draft.orgName||'')}" placeholder="e.g. Riverside Community Care"></div>
+    <div class="q"><span class="label">What type of organization are you?</span><div class="hint">Pick all that apply.</div>
+      <div class="chips" data-field="orgTypes">${OPTS.orgTypes.map(o=>chip(o.key,o.label,draft.orgTypes)).join('')}</div></div>
+    <div class="row2">
+      <div class="q"><label for="state">State</label><select id="state"><option value="">Select…</option>${STATES.map(s=>`<option ${draft.state===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="q"><label for="annualBudget">Annual budget</label><select id="annualBudget">${['','Under $100K','$100K–$500K','$500K–$1M','$1M–$5M','Over $5M'].map(b=>`<option value="${b}" ${draft.annualBudget===b?'selected':''}>${b||'Select…'}</option>`).join('')}</select></div>
+    </div>
+    <div class="q"><label for="serviceArea">Counties or cities you serve</label><input type="text" id="serviceArea" value="${esc(draft.serviceArea||'')}" placeholder="e.g. Montgomery, Chester and Berks counties"></div>` },
+  { title: 'What you do', sub: 'Your work and who you serve shape the search.', render: () => `
+    <div class="q"><label for="mission">In a sentence or two, what does your organization do?</label><textarea id="mission" placeholder="e.g. We provide in-home care so older adults and people with disabilities can live safely at home.">${esc(draft.mission||'')}</textarea></div>
+    <div class="q"><span class="label">Focus areas</span><div class="hint">These match Grants.gov funding categories.</div>
+      <div class="chips" data-field="focusAreas">${OPTS.focusAreas.map(f=>chip(f.code,f.label,draft.focusAreas)).join('')}</div></div>
+    <div class="q"><span class="label">Who do you serve?</span>
+      <div class="chips" data-field="populations">${OPTS.populations.map(p=>chip(p.key,p.label,draft.populations)).join('')}</div></div>
+    <div class="q"><label for="keywords">Search keywords</label><div class="hint">Comma-separated words a funder would use for your work. Each becomes its own daily search.</div>
+      <input type="text" id="keywords" value="${esc((draft.keywords||[]).join(', '))}" placeholder="e.g. home care, caregiver training, aging in place, respite"></div>` },
+  { title: 'What counts as a good fit', sub: 'Filter out grants that are too small, too soon, or too far away.', render: () => `
+    <div class="row2">
+      <div class="q"><label for="minAward">Smallest award worth applying for ($)</label><input type="number" min="0" step="1000" id="minAward" value="${draft.minAward||0}"></div>
+      <div class="q"><label for="horizonDays">Show deadlines up to</label><select id="horizonDays">${[[30,'30 days out'],[60,'60 days out'],[90,'90 days out'],[180,'6 months out'],[365,'1 year out'],[730,'2 years out']].map(([v,l])=>`<option value="${v}" ${+draft.horizonDays===v?'selected':''}>${l}</option>`).join('')}</select></div>
+    </div>
+    <div class="q"><label for="minDaysLeft">Hide grants closing in fewer than</label><select id="minDaysLeft">${[0,3,7,14,21,30].map(v=>`<option value="${v}" ${+draft.minDaysLeft===v?'selected':''}>${v} days</option>`).join('')}</select><div class="hint" style="margin-top:6px">Not enough time to put a good application together.</div></div>
+    <div class="q"><label><input type="checkbox" id="includeForecasted" ${draft.includeForecasted?'checked':''}> Include forecasted grants (announced but not yet open), for an early start</label></div>
+    <div class="q"><label><input type="checkbox" id="includeRolling" ${draft.includeRolling?'checked':''}> Include rolling grants with no fixed deadline</label></div>` },
+  { title: 'Daily updates & calendar', sub: 'How you want to hear about new grants and upcoming deadlines.', render: () => `
+    <div class="q"><label for="email">Email for the daily update</label><input type="email" id="email" value="${esc(draft.email||'')}" placeholder="you@yourorg.org">
+      ${OPTS.emailEnabled ? '' : '<div class="hint" style="margin-top:6px">Email is not set up on this server yet. Your dashboard and calendar still update every day.</div>'}</div>
+    <div class="q"><label for="digestMode">Send the email</label><select id="digestMode">
+      <option value="daily" ${draft.digestMode==='daily'?'selected':''}>Every morning</option>
+      <option value="new_only" ${draft.digestMode==='new_only'?'selected':''}>Only when there's a new grant or a deadline within 7 days</option>
+      <option value="off" ${draft.digestMode==='off'?'selected':''}>Never (dashboard and calendar only)</option></select></div>
+    <div class="q"><span class="label">Calendar reminders before each deadline</span>
+      <div class="chips" data-field="reminders" data-num="1">${[30,21,14,7,3,1].map(d=>chip(String(d), d+(d===1?' day':' days'), draft.reminders.map(String))).join('')}</div>
+      <div class="hint" style="margin-top:8px">Apple Calendar and Outlook use these reminders. Google Calendar ignores reminders in subscribed calendars, so set a default notification on that calendar in Google.</div></div>
+    <div class="q"><label><input type="checkbox" id="calendarAll" ${draft.calendarAll?'checked':''}> Put every match on my calendar, including broader ones (otherwise: strong matches plus any you mark Reviewing, Applying or Submitted)</label></div>` }
+];
+
+function chip(val, label, selected){ return `<span class="chip ${selected.includes(val)?'on':''}" data-val="${esc(val)}" role="button" tabindex="0">${esc(label)}</span>`; }
+
+function collect(){
+  const v = id => { const el = document.getElementById(id); return el ? (el.type==='checkbox' ? el.checked : el.value) : undefined; };
+  ['orgName','state','annualBudget','serviceArea','mission','email','digestMode'].forEach(k=>{ const x=v(k); if(x!==undefined) draft[k]=x; });
+  ['minAward','horizonDays','minDaysLeft'].forEach(k=>{ const x=v(k); if(x!==undefined) draft[k]=Number(x); });
+  ['includeForecasted','includeRolling','calendarAll'].forEach(k=>{ const x=v(k); if(x!==undefined) draft[k]=x; });
+  const kw = v('keywords'); if(kw!==undefined) draft.keywords = kw.split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+function renderWizard(){
+  $('#editBtn').hidden = true;
+  const s = STEPS[step];
+  $('#app').innerHTML = `<div class="wizard">
+    <div class="steps">${STEPS.map((_,i)=>`<div class="${i<=step?'on':''}"></div>`).join('')}</div>
+    <div class="card">
+      <div class="tiny">Step ${step+1} of ${STEPS.length}</div>
+      <h1>${s.title}</h1><p class="muted" style="margin:0">${s.sub}</p>
+      ${s.render()}
+      <div class="wnav">
+        <button class="btn" id="back" ${step===0 && !VIEW ? 'style="visibility:hidden"' : ''}>${step===0 ? 'Cancel' : 'Back'}</button>
+        <button class="btn primary" id="next">${step===STEPS.length-1 ? (VIEW ? 'Save & re-scan' : 'Find my grants') : 'Continue'}</button>
+      </div>
+    </div></div>`;
+  document.querySelectorAll('.chips').forEach(group=>{
+    group.addEventListener('click', e=>{
+      const c = e.target.closest('.chip'); if(!c) return;
+      const field = group.dataset.field, val = c.dataset.val;
+      let list = (draft[field]||[]).map(String);
+      list = list.includes(val) ? list.filter(x=>x!==val) : list.concat(val);
+      draft[field] = group.dataset.num ? list.map(Number) : list;
+      c.classList.toggle('on');
+    });
+  });
+  $('#back').onclick = () => { collect(); if(step===0){ renderDash(); } else { step--; renderWizard(); } };
+  $('#next').onclick = async () => {
+    collect();
+    if(step===0 && !draft.orgTypes.length) return toast('Pick at least one organization type');
+    if(step===1 && !draft.keywords.length && !draft.focusAreas.length && !draft.populations.length) return toast('Add a keyword, focus area or population');
+    if(step < STEPS.length-1){ step++; renderWizard(); window.scrollTo(0,0); return; }
+    try {
+      busy(true, VIEW ? 'Updating your matches…' : 'Searching for grants…');
+      VIEW = VIEW ? await api('PUT', '/api/orgs/'+VIEW.token, draft) : await api('POST', '/api/orgs', draft);
+      rememberToken(VIEW.token);
+      busy(false); renderDash(true);
+    } catch(e){ busy(false); toast(e.message); }
+  };
+}
+
+// ---------------- Dashboard ----------------
+function dueBox(g){
+  if(g.daysLeft===null || g.daysLeft===undefined) return `<div class="due none"><b>—</b><span>${g.oppStatus==='Forecasted'?'forecast':'rolling'}</span></div>`;
+  const cls = g.daysLeft<0 ? 'none' : g.daysLeft<=7 ? 'red' : g.daysLeft<=30 ? 'amber' : '';
+  const d = new Date(g.deadline+'T12:00:00');
+  return `<div class="due ${cls}"><b>${g.daysLeft<0 ? 'Past' : g.daysLeft}</b><span>${g.daysLeft<0?'':'days left · '}${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>`;
+}
+
+function grantCard(g, isNew){
+  const tags = [];
+  if(isNew) tags.push('<span class="tag new">New</span>');
+  tags.push(g.match==='Strong' ? '<span class="tag strong">Strong match</span>' : '<span class="tag">Broader match</span>');
+  if(g.oppStatus==='Forecasted') tags.push('<span class="tag fc">Forecasted</span>');
+  (g.matchedOn||[]).slice(0,4).forEach(m=>tags.push(`<span class="tag">${esc(m)}</span>`));
+  return `<div class="grant" data-id="${esc(g.id)}">
+    ${dueBox(g)}
+    <div>
+      <h3><a href="${esc(g.link)}" target="_blank" rel="noopener">${esc(g.title)}</a></h3>
+      <div class="meta">${esc(g.agency)}${g.number?' · '+esc(g.number):''}${g.ceiling?' · up to <b>'+money(g.ceiling)+'</b>':''}${g.deadline?' · due '+esc(g.deadline):''}</div>
+      <div class="tags">${tags.join('')}</div>
+      ${g.summary?`<div class="summary">${esc(g.summary)}</div>`:''}
+    </div>
+    <div class="side">
+      <select data-status="${esc(g.id)}" aria-label="Your status">${OPTS.statusOptions.map(s=>`<option ${g.myStatus===s?'selected':''}>${s}</option>`).join('')}</select>
+      ${g.deadline?`<a class="btn" style="padding:6px 10px;font-size:13px" href="/cal/${VIEW.token}/${encodeURIComponent(g.id)}.ics">+ Add to calendar</a>`:''}
+    </div></div>`;
+}
+
+function renderDash(fresh){
+  if(!VIEW){ step=0; return renderWizard(); }
+  $('#editBtn').hidden = false;
+  const v = VIEW, newIds = new Set(v.lastSummary ? v.lastSummary.newIds : []);
+  const active = v.grants.filter(g=>g.myStatus!=='Not a fit');
+  const soon = active.filter(g=>g.daysLeft!==null && g.daysLeft>=0 && g.daysLeft<=14).length;
+  let list = v.grants.filter(g=>{
+    if(filter==='strong' && g.match!=='Strong') return false;
+    if(filter==='broader' && g.match!=='Broader') return false;
+    if(filter==='forecast' && g.oppStatus!=='Forecasted') return false;
+    if(filter==='working' && !['Reviewing','Applying','Submitted'].includes(g.myStatus)) return false;
+    if(filter!=='hidden' && g.myStatus==='Not a fit') return false;
+    if(filter==='hidden' && g.myStatus!=='Not a fit') return false;
+    if(query && !(g.title+' '+g.agency+' '+(g.summary||'')).toLowerCase().includes(query.toLowerCase())) return false;
+    return true;
+  });
+  const enc = encodeURIComponent;
+  const calName = 'Grant Deadlines' + (v.profile.orgName ? ' – ' + v.profile.orgName : '');
+  $('#app').innerHTML = `
+    <div class="dash-head">
+      <div><h1>${esc(v.profile.orgName || 'Your grants')}</h1>
+        <div class="muted">Last checked ${v.lastRun ? new Date(v.lastRun).toLocaleString() : 'never'} · checks again automatically every morning</div></div>
+      <div class="actions">
+        <button class="btn" id="scanBtn">Check now</button>
+        ${v.emailEnabled && v.profile.email ? '<button class="btn" id="mailBtn">Email me today\'s update</button>' : ''}
+      </div>
+    </div>
+    ${fresh ? `<div class="card" style="margin-bottom:16px;border-color:#a6d4c2;background:#f3faf6"><b>Save this link.</b> It's your private dashboard, and you can open it on any device: <a href="${esc(v.links.dashboard)}">${esc(v.links.dashboard)}</a></div>` : ''}
+    <div class="stats">
+      <div class="stat"><b>${active.length}</b><span>Matching grants</span></div>
+      <div class="stat"><b>${newIds.size}</b><span>New in latest check</span></div>
+      <div class="stat"><b>${soon}</b><span>Closing within 14 days</span></div>
+      <div class="stat"><b>${v.onCalendar}</b><span>Deadlines on your calendar</span></div>
+    </div>
+    <div class="calbox">
+      <h2>Connect your calendar</h2>
+      <div class="muted">Subscribe once and new deadlines appear by themselves. This works with Google, Outlook / Microsoft 365, Apple, Yahoo, Proton or any app that accepts a calendar URL.</div>
+      <div class="feed"><input type="text" readonly value="${esc(v.links.feed)}" id="feedUrl"><button class="btn" id="copyFeed">Copy link</button></div>
+      <div class="calbtns">
+        <a class="btn" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/render?cid=${enc(v.links.webcal)}">Google Calendar</a>
+        <a class="btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/addfromweb?url=${enc(v.links.feed)}&name=${enc(calName)}">Outlook / Microsoft 365</a>
+        <a class="btn" target="_blank" rel="noopener" href="https://outlook.live.com/calendar/0/addfromweb?url=${enc(v.links.feed)}&name=${enc(calName)}">Outlook.com</a>
+        <a class="btn" href="${esc(v.links.webcal)}">Apple Calendar</a>
+        <a class="btn" href="${esc(v.links.download)}">Download .ics</a>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="seg">${[['all','All'],['strong','Strong'],['broader','Broader'],['forecast','Forecasted'],['working','My pipeline'],['hidden','Not a fit']].map(([k,l])=>`<button data-f="${k}" class="${filter===k?'on':''}">${l}</button>`).join('')}</div>
+      <input type="text" id="search" placeholder="Search titles & agencies" value="${esc(query)}">
+      <span class="tiny">${list.length} shown</span>
+    </div>
+    <div id="list">${list.length ? list.map(g=>grantCard(g,newIds.has(g.id))).join('') : `<div class="empty card">No grants in this view yet. Try more keywords, a longer deadline window, or the Broader filter.</div>`}</div>
+
+    <details class="manual" ${v.manual.length?'open':''}>
+      <summary>State, foundation & corporate grants you're tracking (${v.manual.length})</summary>
+      <p class="muted" style="margin:8px 0 0">Found a grant somewhere other than Grants.gov? Add it here and its deadline goes on the same calendar.</p>
+      <div class="mform">
+        <input type="text" id="mTitle" placeholder="Grant name">
+        <input type="text" id="mFunder" placeholder="Funder">
+        <input type="date" id="mDeadline">
+        <input type="text" id="mAmount" placeholder="Amount">
+        <input type="url" id="mLink" placeholder="Link (optional)" style="grid-column:1/4">
+        <button class="btn primary" id="mAdd">Add</button>
+      </div>
+      <div class="mlist">${v.manual.map(m=>`<div class="grant">${dueBox(m)}<div><h3>${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.title)}</a>`:esc(m.title)}</h3><div class="meta">${esc(m.funder)}${m.amount?' · '+esc(m.amount):''} · due ${esc(m.deadline)}</div></div><div class="side"><button class="btn" data-del="${esc(m.id)}">Remove</button></div></div>`).join('')}</div>
+    </details>
+    <p class="tiny" style="margin-top:30px">Federal opportunities come from Grants.gov. This product uses the Grants.gov API but is not endorsed or certified by HHS. Always confirm eligibility and deadlines on the official listing.</p>`;
+
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ filter=b.dataset.f; renderDash(); });
+  $('#search').oninput = e => { query = e.target.value; const pos=e.target.selectionStart; renderDash(); const s=$('#search'); s.focus(); s.setSelectionRange(pos,pos); };
+  $('#copyFeed').onclick = () => { navigator.clipboard.writeText(v.links.feed).then(()=>toast('Calendar link copied'), ()=>{ $('#feedUrl').select(); }); };
+  $('#scanBtn').onclick = async () => { try { busy(true,'Checking for new grants…','Searching Grants.gov with your latest answers.'); VIEW = await api('POST','/api/orgs/'+v.token+'/scan',{}); busy(false); renderDash(); toast('Up to date'); } catch(e){ busy(false); toast(e.message); } };
+  const mb = $('#mailBtn'); if(mb) mb.onclick = async () => { try { busy(true,'Sending your update…',' '); VIEW = await api('POST','/api/orgs/'+v.token+'/scan',{email:true}); busy(false); renderDash(); toast('Update sent to '+v.profile.email); } catch(e){ busy(false); toast(e.message); } };
+  document.querySelectorAll('select[data-status]').forEach(sel=>sel.onchange = async () => {
+    try { VIEW = await api('PATCH','/api/orgs/'+v.token+'/grants/'+encodeURIComponent(sel.dataset.status), {myStatus: sel.value}); renderDash(); toast('Status saved · calendar updates on next sync'); } catch(e){ toast(e.message); }
+  });
+  $('#mAdd').onclick = async () => {
+    const body = { title: $('#mTitle').value, funder: $('#mFunder').value, deadline: $('#mDeadline').value, amount: $('#mAmount').value, link: $('#mLink').value };
+    if(!body.title || !body.deadline) return toast('Add a name and a deadline');
+    try { VIEW = await api('POST','/api/orgs/'+v.token+'/manual', body); renderDash(); toast('Added to your calendar feed'); } catch(e){ toast(e.message); }
+  };
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick = async () => { VIEW = await api('DELETE','/api/orgs/'+v.token+'/manual/'+b.dataset.del); renderDash(); });
+}
+
+$('#editBtn').onclick = () => { draft = { ...draft, ...VIEW.profile }; step = 0; renderWizard(); };
+
+(async function init(){
+  try { OPTS = await api('GET','/api/options'); } catch(e){ $('#app').innerHTML = '<div class="card">Could not reach the Grant Radar server.</div>'; return; }
+  const t = tokenFromUrl() || storedToken();
+  if(t){ try { VIEW = await api('GET','/api/orgs/'+t); rememberToken(t); return renderDash(); } catch(e){ /* fall through to wizard */ } }
+  if(!OPTS.allowSignup){ $('#app').innerHTML = '<div class="card">Open your private dashboard link to continue.</div>'; return; }
+  renderWizard();
+})();
+</script>
+</body>
+</html>

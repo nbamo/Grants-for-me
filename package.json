@@ -1,0 +1,18 @@
+{
+  "name": "grant-radar",
+  "version": "1.0.0",
+  "description": "Questionnaire-driven grant finder for small businesses and nonprofits, with a daily scan of Grants.gov and a calendar feed for any calendar app.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "scan": "node -e \"require('./src/server').dailyJob().then(() => process.exit(0))\"",
+    "test": "node test/run-tests.js"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16"
+  }
+}

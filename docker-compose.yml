@@ -1,5 +1,5 @@
 services:
-  grant-radar:
+  grants-for-me:
     build: .
     restart: unless-stopped
     env_file: .env

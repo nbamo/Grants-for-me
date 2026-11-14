@@ -1,4 +1,4 @@
-# Grant Radar
+# Grants for Me
 
 A questionnaire-driven grant finder for small businesses and nonprofits. It searches for matching grants every morning and puts their deadlines on **any calendar**: Google, Outlook / Microsoft 365, Apple, Yahoo, Proton or anything else that can subscribe to a calendar URL.
 

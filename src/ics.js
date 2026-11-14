@@ -34,7 +34,7 @@ function stamp(d = new Date()) {
 }
 const money = n => (n ? '$' + Number(n).toLocaleString('en-US') : '');
 
-function eventLines(g, { reminders = [14, 7, 1], host = 'grant-radar' } = {}) {
+function eventLines(g, { reminders = [14, 7, 1], host = 'grants-for-me' } = {}) {
   const isManual = !!g.manual;
   const prefix = g.oppStatus === 'Forecasted' ? 'Grant deadline (forecast): ' : 'Grant deadline: ';
   const descParts = [
@@ -46,7 +46,7 @@ function eventLines(g, { reminders = [14, 7, 1], host = 'grant-radar' } = {}) {
     g.link ? 'Details: ' + g.link : '',
     g.notes ? 'Notes: ' + g.notes : ''
   ].filter(Boolean);
-  descParts.push('', 'Tracked by Grant Radar. Always confirm the deadline and time zone on the official listing.');
+  descParts.push('', 'Tracked by Grants for Me. Always confirm the deadline and time zone on the official listing.');
 
   const lines = [
     'BEGIN:VEVENT',
@@ -74,7 +74,7 @@ function buildCalendar(events, { name = 'Grant Deadlines', reminders, host } = {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Grant Radar//Grant Deadlines//EN',
+    'PRODID:-//Grants for Me//Grant Deadlines//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${esc(name)}`,

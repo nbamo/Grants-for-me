@@ -77,7 +77,7 @@ async function postJson(url, body, fetchImpl = fetch) {
     try {
       const res = await fetchImpl(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'User-Agent': 'GrantRadar/1.0' },
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'GrantsForMe/1.0' },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(30000)
       });

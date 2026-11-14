@@ -1,5 +1,5 @@
 {
-  "name": "grant-radar",
+  "name": "grants-for-me",
   "version": "1.0.0",
   "description": "Questionnaire-driven grant finder for small businesses and nonprofits, with a daily scan of Grants.gov and a calendar feed for any calendar app.",
   "main": "src/server.js",

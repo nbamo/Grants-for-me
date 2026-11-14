@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grant Radar</title>
+<title>Grants for Me</title>
 <style>
   :root{
     --ink:#14213d; --ink-2:#475467; --ink-3:#98a2b3; --line:#e4e7ec; --bg:#f6f5f1; --card:#fff;
@@ -92,8 +92,8 @@
 </head>
 <body>
 <header class="top">
-  <div class="logo">GR</div>
-  <div class="brand">Grant Radar<small>Grants matched to your organization, with deadlines on your calendar</small></div>
+  <div class="logo">GM</div>
+  <div class="brand">Grants for Me<small>Grants matched to your organization, with deadlines on your calendar</small></div>
   <div class="spacer"></div>
   <button class="btn ghost" id="editBtn" hidden>Edit answers</button>
 </header>
@@ -122,8 +122,8 @@ async function api(method, url, body){
 }
 
 function tokenFromUrl(){ return new URLSearchParams(location.search).get('org'); }
-function storedToken(){ try { return localStorage.getItem('grantRadarOrg'); } catch(e){ return null; } }
-function rememberToken(t){ try { localStorage.setItem('grantRadarOrg', t); } catch(e){} history.replaceState(null,'','?org='+t); }
+function storedToken(){ try { return localStorage.getItem('grantsForMeOrg'); } catch(e){ return null; } }
+function rememberToken(t){ try { localStorage.setItem('grantsForMeOrg', t); } catch(e){} history.replaceState(null,'','?org='+t); }
 
 // ---------------- Wizard ----------------
 const STEPS = [
@@ -329,7 +329,7 @@ function renderDash(fresh){
 $('#editBtn').onclick = () => { draft = { ...draft, ...VIEW.profile }; step = 0; renderWizard(); };
 
 (async function init(){
-  try { OPTS = await api('GET','/api/options'); } catch(e){ $('#app').innerHTML = '<div class="card">Could not reach the Grant Radar server.</div>'; return; }
+  try { OPTS = await api('GET','/api/options'); } catch(e){ $('#app').innerHTML = '<div class="card">Could not reach the Grants for Me server.</div>'; return; }
   const t = tokenFromUrl() || storedToken();
   if(t){ try { VIEW = await api('GET','/api/orgs/'+t); rememberToken(t); return renderDash(); } catch(e){ /* fall through to wizard */ } }
   if(!OPTS.allowSignup){ $('#app').innerHTML = '<div class="card">Open your private dashboard link to continue.</div>'; return; }

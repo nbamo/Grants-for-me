@@ -1,4 +1,4 @@
-// Grant Radar — questionnaire + daily grant scan + calendar feed for any calendar app.
+// Grants for Me — questionnaire + daily grant scan + calendar feed for any calendar app.
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
@@ -117,7 +117,7 @@ function gate(req, res, next) {
   const pass = b64 ? Buffer.from(b64, 'base64').toString().split(':').slice(1).join(':') : '';
   const ok = pass.length === APP_PASSWORD.length && crypto.timingSafeEqual(Buffer.from(pass), Buffer.from(APP_PASSWORD));
   if (ok) return next();
-  res.set('WWW-Authenticate', 'Basic realm="Grant Radar"').status(401).send('Password required');
+  res.set('WWW-Authenticate', 'Basic realm="Grants for Me"').status(401).send('Password required');
 }
 
 // ---------- calendar feeds (secret-token URLs) ----------
@@ -127,7 +127,7 @@ app.get('/cal/:token.ics', (req, res) => {
   const body = buildCalendar(grants.calendarGrants(org), {
     name: `Grant Deadlines${org.profile.orgName ? ' – ' + org.profile.orgName : ''}`,
     reminders: org.profile.reminders,
-    host: req.get('host') || 'grant-radar'
+    host: req.get('host') || 'grants-for-me'
   });
   res.set('Content-Type', 'text/calendar; charset=utf-8');
   res.set('Cache-Control', 'no-cache');
@@ -141,7 +141,7 @@ app.get('/cal/:token/:id.ics', (req, res) => {
   let g = org.grants[req.params.id];
   if (!g) { const m = (org.manual || []).find(x => x.id === req.params.id); if (m) g = { ...m, manual: true }; }
   if (!g || !g.deadline) return res.status(404).send('No deadline for this grant');
-  const body = buildCalendar([g], { name: 'Grant deadline', reminders: org.profile.reminders, host: req.get('host') || 'grant-radar' });
+  const body = buildCalendar([g], { name: 'Grant deadline', reminders: org.profile.reminders, host: req.get('host') || 'grants-for-me' });
   res.set('Content-Type', 'text/calendar; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="grant-${req.params.id}.ics"`);
   res.send(body);
@@ -241,7 +241,7 @@ async function dailyJob() {
 
 if (require.main === module) {
   cron.schedule(SCAN_CRON, dailyJob, { timezone: TZ });
-  app.listen(PORT, () => log(`Grant Radar on :${PORT} · daily scan "${SCAN_CRON}" (${TZ}) · data in ${DATA_DIR}`));
+  app.listen(PORT, () => log(`Grants for Me on :${PORT} · daily scan "${SCAN_CRON}" (${TZ}) · data in ${DATA_DIR}`));
   if (process.argv.includes('--scan-now')) dailyJob();
 }
 

@@ -36,13 +36,13 @@ function buildDigest(org, summary, appUrl) {
   const subjectBits = [];
   if (newOnes.length) subjectBits.push(`${newOnes.length} new grant${newOnes.length === 1 ? '' : 's'}`);
   if (closing.length) subjectBits.push(`${closing.length} closing within 14 days`);
-  const subject = `Grant Radar for ${name}: ${subjectBits.join(' · ') || 'no changes today'}`;
+  const subject = `Grants for Me for ${name}: ${subjectBits.join(' · ') || 'no changes today'}`;
 
   const section = (title, list) => list.length
     ? `<h3 style="margin:24px 0 4px;font-size:15px">${title}</h3><table width="100%" cellspacing="0" cellpadding="0">${list.map(g => row(g, today)).join('')}</table>` : '';
 
   const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:640px;color:#101828">
-    <h2 style="margin:0 0 4px">Grant Radar daily update</h2>
+    <h2 style="margin:0 0 4px">Grants for Me daily update</h2>
     <div style="color:#475467">${h(name)} · ${today} · ${strong} strong matches tracked</div>
     ${section('New since yesterday', newOnes.slice(0, 25))}
     ${section('Deadlines in the next 14 days', closing)}
@@ -60,7 +60,7 @@ async function sendDigest(org, summary, appUrl, { force = false } = {}) {
   const { subject, html, hasNews } = buildDigest(org, summary, appUrl);
   if (!force && org.profile.digestMode === 'new_only' && !hasNews) return { sent: false, reason: 'nothing new' };
   if (org.profile.digestMode === 'off' && !force) return { sent: false, reason: 'digest off' };
-  await t.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_FROM || 'Grant Radar <no-reply@localhost>', to, subject, html });
+  await t.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_FROM || 'Grants for Me <no-reply@localhost>', to, subject, html });
   return { sent: true };
 }
 

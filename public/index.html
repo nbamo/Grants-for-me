@@ -78,6 +78,14 @@
   .links a.apply:hover{background:var(--brand-2);text-decoration:none}
   .links a.apply.fc{background:#6941c6}
   .links .contact{color:var(--ink-2);font-weight:400}
+  .tag.src{background:#fff4e5;color:#93370d;font-weight:600} .tag.src.federal{background:#eef4ff;color:#3538cd}
+  .tag.warn{background:var(--amber-soft);color:var(--amber)}
+  .srcbox{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;margin-bottom:18px}
+  .srcrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .srcrow:first-of-type{border-top:0}
+  .srcrow .st{font-size:12px;color:var(--ink-3)} .srcrow .bad{color:var(--red)}
+  .srcform{display:grid;grid-template-columns:2fr 1.3fr 1fr auto;gap:8px;margin-top:10px}
+  .note{background:var(--amber-soft);color:#7a2e0e;border-radius:10px;padding:10px 12px;font-size:13.5px;margin:8px 0}
   .ready{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;margin-bottom:18px}
   .ready ol{margin:8px 0 0;padding-left:20px} .ready li{margin:4px 0}
   .empty{text-align:center;padding:40px;color:var(--ink-2)}
@@ -93,6 +101,7 @@
   .overlay.on{display:grid}
   .overlay .card{max-width:420px;text-align:center}
   @media (max-width:760px){
+    .srcform,.srcrow{grid-template-columns:1fr}
     .stats{grid-template-columns:repeat(2,1fr)} .row2,.mform{grid-template-columns:1fr}
     .grant{grid-template-columns:72px 1fr} .side{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-start}
   }
@@ -106,7 +115,7 @@
   <button class="btn ghost" id="editBtn" hidden>Edit answers</button>
 </header>
 <main id="app"></main>
-<div class="overlay" id="busy"><div class="card"><div class="spinner" style="margin:0 auto 12px;border-color:#ddd;border-top-color:var(--brand);width:28px;height:28px"></div><h2 id="busyTitle">Searching for grants…</h2><p class="muted" id="busyText">Checking Grants.gov against your answers. This can take up to a minute the first time.</p></div></div>
+<div class="overlay" id="busy"><div class="card"><div class="spinner" style="margin:0 auto 12px;border-color:#ddd;border-top-color:var(--brand);width:28px;height:28px"></div><h2 id="busyTitle">Searching for grants…</h2><p class="muted" id="busyText">Checking Grants.gov and your other sources against your answers. This can take a few minutes the first time.</p></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -115,8 +124,8 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const money = n => n ? '$' + Number(n).toLocaleString('en-US') : '';
 const STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA PR RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');
 
-let OPTS = null, VIEW = null, step = 0, filter = 'all', query = '';
-let draft = { orgTypes: ['nonprofit501c3'], focusAreas: [], populations: [], keywords: [], reminders: [14,7,1],
+let OPTS = null, VIEW = null, step = 0, filter = 'all', query = '', openSources = false;
+let draft = { sourceTypes: ['federal','state','local','foundation','bank','corporate'], orgTypes: ['nonprofit501c3'], focusAreas: [], populations: [], keywords: [], reminders: [14,7,1],
   horizonDays: 365, minDaysLeft: 7, minAward: 0, includeForecasted: true, includeRolling: false, digestMode: 'daily' };
 
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2200); }
@@ -158,6 +167,9 @@ const STEPS = [
       <div class="q"><label for="horizonDays">Show deadlines up to</label><select id="horizonDays">${[[30,'30 days out'],[60,'60 days out'],[90,'90 days out'],[180,'6 months out'],[365,'1 year out'],[730,'2 years out']].map(([v,l])=>`<option value="${v}" ${+draft.horizonDays===v?'selected':''}>${l}</option>`).join('')}</select></div>
     </div>
     <div class="q"><label for="minDaysLeft">Hide grants closing in fewer than</label><select id="minDaysLeft">${[0,3,7,14,21,30].map(v=>`<option value="${v}" ${+draft.minDaysLeft===v?'selected':''}>${v} days</option>`).join('')}</select><div class="hint" style="margin-top:6px">Not enough time to put a good application together.</div></div>
+    <div class="q"><span class="label">Where should we look for grants?</span><div class="hint">Pick all that apply.</div>
+      <div class="chips" data-field="sourceTypes">${OPTS.sourceTypes.map(t=>chip(t.key,t.label,draft.sourceTypes||[])).join('')}</div>
+      ${OPTS.capabilities.ai ? '' : '<div class="hint" style="margin-top:8px">State, county, foundation, bank and corporate searches switch on once an AI key is added to the server. Until then only federal grants are searched.</div>'}</div>
     <div class="q"><label><input type="checkbox" id="includeForecasted" ${draft.includeForecasted?'checked':''}> Include forecasted grants (announced but not yet open), for an early start</label></div>
     <div class="q"><label><input type="checkbox" id="includeRolling" ${draft.includeRolling?'checked':''}> Include rolling grants with no fixed deadline</label></div>` },
   { title: 'Daily updates & calendar', sub: 'How you want to hear about new grants and upcoming deadlines.', render: () => `
@@ -230,7 +242,19 @@ function dueBox(g){
   return `<div class="due ${cls}"><b>${g.daysLeft<0 ? 'Past' : g.daysLeft}</b><span>${g.daysLeft<0?'':'days left · '}${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>`;
 }
 
+const SRC_LABEL = {federal:'Federal', state:'State', local:'County / city', foundation:'Foundation', bank:'Bank', corporate:'Corporate', other:'Other'};
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch(e){ return ''; } };
+
 function applyLinks(g){
+  if(g.origin==='web'){
+    const out = [];
+    const same = g.applyUrl === g.sourceUrl;
+    out.push(`<a class="apply" href="${esc(g.applyUrl)}" target="_blank" rel="noopener">${same?'View & apply ↗':'Apply ↗'}</a>`);
+    if(!same && g.sourceUrl) out.push(`<a href="${esc(g.sourceUrl)}" target="_blank" rel="noopener">Found on ${esc(hostOf(g.sourceUrl))} ↗</a>`);
+    if(g.contactEmail) out.push(`<a href="mailto:${esc(g.contactEmail)}?subject=${encodeURIComponent('Question about '+g.title)}">✉ Email funder</a>`);
+    if(g.amountText && !g.ceiling) out.push(`<span class="contact">${esc(g.amountText)}</span>`);
+    return `<div class="links">${out.join('')}</div>`;
+  }
   const out = [];
   const fc = g.oppStatus==='Forecasted';
   const apply = g.applyUrl || g.link;
@@ -248,6 +272,9 @@ function applyLinks(g){
 function grantCard(g, isNew){
   const tags = [];
   if(isNew) tags.push('<span class="tag new">New</span>');
+  const st = g.origin==='web' ? (g.sourceType||'other') : 'federal';
+  tags.push(`<span class="tag src ${st==='federal'?'federal':''}">${SRC_LABEL[st]||st}</span>`);
+  if(g.fitNote) tags.push(`<span class="tag warn">${esc(g.fitNote)}</span>`);
   tags.push(g.match==='Strong' ? '<span class="tag strong">Strong match</span>' : '<span class="tag">Broader match</span>');
   if(g.oppStatus==='Forecasted') tags.push('<span class="tag fc">Forecasted</span>');
   (g.matchedOn||[]).slice(0,4).forEach(m=>tags.push(`<span class="tag">${esc(m)}</span>`));
@@ -255,7 +282,7 @@ function grantCard(g, isNew){
     ${dueBox(g)}
     <div>
       <h3><a href="${esc(g.link)}" target="_blank" rel="noopener">${esc(g.title)}</a></h3>
-      <div class="meta">${esc(g.agency)}${g.number?' · '+esc(g.number):''}${g.ceiling?' · up to <b>'+money(g.ceiling)+'</b>':''}${g.deadline?' · due '+esc(g.deadline):''}</div>
+      <div class="meta">${esc(g.agency)}${g.number?' · '+esc(g.number):''}${g.origin==='web'&&g.oppStatus==='Rolling'?' · rolling deadline':''}${g.ceiling?' · up to <b>'+money(g.ceiling)+'</b>':''}${g.deadline?' · due '+esc(g.deadline):''}</div>
       <div class="tags">${tags.join('')}</div>
       ${g.summary?`<div class="summary">${esc(g.summary)}</div>`:''}
       ${applyLinks(g)}
@@ -276,6 +303,7 @@ function renderDash(fresh){
     if(filter==='strong' && g.match!=='Strong') return false;
     if(filter==='broader' && g.match!=='Broader') return false;
     if(filter==='forecast' && g.oppStatus!=='Forecasted') return false;
+    if(filter==='nonfed' && g.origin!=='web') return false;
     if(filter==='working' && !['Reviewing','Applying','Submitted'].includes(g.myStatus)) return false;
     if(filter!=='hidden' && g.myStatus==='Not a fit') return false;
     if(filter==='hidden' && g.myStatus!=='Not a fit') return false;
@@ -312,6 +340,27 @@ function renderDash(fresh){
         <a class="btn" href="${esc(v.links.download)}">Download .ics</a>
       </div>
     </div>
+    <details class="srcbox" id="srcbox" ${openSources?'open':''}>
+      <summary><b>Where we look</b> <span class="muted">· Grants.gov${v.capabilities.ai?` + ${v.sources.filter(x=>x.enabled).length} watched pages`+(v.capabilities.search?' + daily web search':''):''}</span></summary>
+      ${!v.capabilities.ai ? `<div class="note">Only <b>federal</b> grants are being searched. To also find state, county, foundation, bank and corporate grants, add an <b>ANTHROPIC_API_KEY</b> to the server settings. That lets the app read funder web pages. Add a <b>BRAVE_API_KEY</b> to also run a daily web search for new ones.</div>`
+        : !v.capabilities.search ? `<div class="note">Watching the pages below. Add a <b>BRAVE_API_KEY</b> to the server to also search the web daily for county, foundation, bank and corporate grants.</div>` : ''}
+      ${v.otherSummary && v.otherSummary.at ? `<p class="tiny" style="margin:6px 0">Last check read ${v.otherSummary.pages} pages and found ${v.otherSummary.found} open opportunities${v.otherSummary.errors && v.otherSummary.errors.length ? ` · ${v.otherSummary.errors.length} page(s) couldn't be read`:''}.</p>`:''}
+      <div style="margin-top:8px">
+        ${v.sources.length ? v.sources.map(x=>`<div class="srcrow">
+          <input type="checkbox" data-srctoggle="${esc(x.id)}" ${x.enabled?'checked':''} title="Include in daily check">
+          <div><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a> <span class="tag">${esc(SRC_LABEL[x.type]||x.type)}</span><br>
+            <span class="st ${x.lastStatus && x.lastStatus!=='ok'?'bad':''}">${x.lastChecked ? (x.lastStatus==='ok' ? `Checked ${new Date(x.lastChecked).toLocaleDateString()} · ${x.lastFound||0} open` : `Couldn't read: ${esc(x.lastStatus)}`) : 'Not checked yet'}</span></div>
+          <span class="tiny">${esc(hostOf(x.url))}</span>
+          <button class="btn" style="padding:5px 10px;font-size:13px" data-srcdel="${esc(x.id)}">Remove</button></div>`).join('') : '<p class="muted">No pages yet.</p>'}
+      </div>
+      <div class="srcform">
+        <input type="url" id="srcUrl" placeholder="Page to watch, e.g. your community foundation's grants page">
+        <input type="text" id="srcLabel" placeholder="Name (optional)">
+        <select id="srcType">${OPTS.sourceTypes.filter(t=>t.key!=='federal').map(t=>`<option value="${t.key}">${esc(t.label)}</option>`).join('')}</select>
+        <button class="btn primary" id="srcAdd">Watch page</button>
+      </div>
+      <p class="tiny" style="margin-top:8px">Tip: add your county's grants page, your community foundation, your state senator's grant directory, and the giving pages of banks and companies near you.</p>
+    </details>
     <details class="ready" ${v.grants.some(g=>['Applying','Reviewing'].includes(g.myStatus))?'open':''}>
       <summary><b>Before you apply to a federal grant</b> <span class="muted">· one-time setup, which can take 2–4 weeks, so start early</span></summary>
       <ol>
@@ -322,15 +371,15 @@ function renderDash(fresh){
       </ol>
     </details>
     <div class="toolbar">
-      <div class="seg">${[['all','All'],['strong','Strong'],['broader','Broader'],['forecast','Forecasted'],['working','My pipeline'],['hidden','Not a fit']].map(([k,l])=>`<button data-f="${k}" class="${filter===k?'on':''}">${l}</button>`).join('')}</div>
+      <div class="seg">${[['all','All'],['strong','Strong'],['broader','Broader'],['nonfed','State, local & private'],['forecast','Forecasted'],['working','My pipeline'],['hidden','Not a fit']].map(([k,l])=>`<button data-f="${k}" class="${filter===k?'on':''}">${l}</button>`).join('')}</div>
       <input type="text" id="search" placeholder="Search titles & agencies" value="${esc(query)}">
       <span class="tiny">${list.length} shown</span>
     </div>
     <div id="list">${list.length ? list.map(g=>grantCard(g,newIds.has(g.id))).join('') : `<div class="empty card">No grants in this view yet. Try more keywords, a longer deadline window, or the Broader filter.</div>`}</div>
 
     <details class="manual" ${v.manual.length?'open':''}>
-      <summary>State, foundation & corporate grants you're tracking (${v.manual.length})</summary>
-      <p class="muted" style="margin:8px 0 0">Found a grant somewhere other than Grants.gov? Add it here and its deadline goes on the same calendar.</p>
+      <summary>Grants you've added yourself (${v.manual.length})</summary>
+      <p class="muted" style="margin:8px 0 0">Heard about a grant from a funder, email or meeting? Add it here and its deadline goes on the same calendar.</p>
       <div class="mform">
         <input type="text" id="mTitle" placeholder="Grant name">
         <input type="text" id="mFunder" placeholder="Funder">
@@ -358,10 +407,22 @@ function renderDash(fresh){
     if(!body.title || !body.deadline) return toast('Add a name and a deadline');
     try { VIEW = await api('POST','/api/orgs/'+v.token+'/manual', body); renderDash(); toast('Added to your calendar feed'); } catch(e){ toast(e.message); }
   };
+  $('#srcbox').addEventListener('toggle', e => { openSources = e.target.open; });
+  $('#srcAdd').onclick = async () => {
+    const body = { url: $('#srcUrl').value.trim(), label: $('#srcLabel').value.trim(), type: $('#srcType').value };
+    if(!body.url) return toast('Paste the web address of a grants page');
+    try { VIEW = await api('POST','/api/orgs/'+v.token+'/sources', body); openSources = true; renderDash(); toast('Added. It will be checked on the next scan.'); } catch(e){ toast(e.message); }
+  };
+  document.querySelectorAll('[data-srcdel]').forEach(b=>b.onclick = async () => { VIEW = await api('DELETE','/api/orgs/'+v.token+'/sources/'+b.dataset.srcdel); openSources = true; renderDash(); });
+  document.querySelectorAll('[data-srctoggle]').forEach(c=>c.onchange = async () => { VIEW = await api('PATCH','/api/orgs/'+v.token+'/sources/'+c.dataset.srctoggle, {enabled:c.checked}); openSources = true; renderDash(); });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick = async () => { VIEW = await api('DELETE','/api/orgs/'+v.token+'/manual/'+b.dataset.del); renderDash(); });
 }
 
-$('#editBtn').onclick = () => { draft = { ...draft, ...VIEW.profile }; step = 0; renderWizard(); };
+$('#editBtn').onclick = () => {
+  const st = VIEW.profile.sourceTypes || {};
+  draft = { ...draft, ...VIEW.profile, sourceTypes: Array.isArray(st) ? st : Object.keys(st).filter(k=>st[k]) };
+  step = 0; renderWizard();
+};
 
 (async function init(){
   try { OPTS = await api('GET','/api/options'); } catch(e){ $('#app').innerHTML = '<div class="card">Could not reach the Grants for Me server.</div>'; return; }

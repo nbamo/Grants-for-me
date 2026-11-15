@@ -55,6 +55,7 @@ function searchKeywords(profile) {
 }
 
 function buildQueries(profile) {
+  if (profile.sourceTypes && profile.sourceTypes.federal === false) return [];
   const eligibilities = eligibilityCodes(profile).join('|');
   const oppStatuses = profile.includeForecasted ? 'forecasted|posted' : 'posted';
   const queries = searchKeywords(profile).map(kw => ({

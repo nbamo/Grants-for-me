@@ -8,6 +8,8 @@ const grants = require('./grants');
 const { buildCalendar } = require('./ics');
 const { sendDigest } = require('./digest');
 const cfg = require('./config');
+const sources = require('./sources');
+const { starterSourcesFor } = require('./states');
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -37,6 +39,10 @@ function cleanProfile(p = {}) {
   const focusAreas = arr(p.focusAreas).filter(c => cfg.FOCUS_AREAS.some(f => f.code === c));
   const populations = arr(p.populations).filter(k => cfg.POPULATIONS.some(x => x.key === k));
   const keywords = arr(p.keywords).map(k => k.slice(0, 60)).slice(0, 20);
+  const pickedSources = Array.isArray(p.sourceTypes) ? p.sourceTypes
+    : (p.sourceTypes && typeof p.sourceTypes === 'object') ? Object.keys(p.sourceTypes).filter(k => p.sourceTypes[k]) : null;
+  const sourceTypes = {};
+  for (const t of sources.SOURCE_TYPES) sourceTypes[t.key] = pickedSources ? pickedSources.includes(t.key) : true;
   const reminders = arr(p.reminders).map(Number).filter(n => [1, 3, 7, 14, 21, 30].includes(n));
   return {
     orgName: String(p.orgName || '').slice(0, 120).trim(),
@@ -47,6 +53,7 @@ function cleanProfile(p = {}) {
     annualBudget: String(p.annualBudget || ''),
     focusAreas,
     populations,
+    sourceTypes,
     keywords,
     minAward: clampInt(p.minAward, 0, 100000000, 0),
     horizonDays: clampInt(p.horizonDays, 14, 730, 365),
@@ -77,6 +84,9 @@ function orgView(org, req) {
     grants: grants.sortedGrants(org).map(g => publicGrant(g, today)),
     manual: (org.manual || []).map(m => ({ ...m, daysLeft: m.deadline ? grants.daysBetween(today, m.deadline) : null })),
     onCalendar: grants.calendarGrants(org, today).length,
+    sources: (org.sources || []).map(({ id, url, label, type, enabled, lastChecked, lastStatus, lastFound, starter }) => ({ id, url, label, type, enabled: enabled !== false, lastChecked, lastStatus, lastFound, starter })),
+    capabilities: sources.capabilities(),
+    otherSummary: org.lastOther || null,
     links: {
       dashboard: `${base}/?org=${org.token}`,
       feed: feedHttps,
@@ -88,12 +98,28 @@ function orgView(org, req) {
   };
 }
 
+function addStarterSources(org) {
+  org.sources = org.sources || [];
+  for (const s of starterSourcesFor(org.profile.state, org.profile.sourceTypes)) {
+    if (org.sources.some(x => x.url === s.url)) continue;
+    org.sources.push({ id: 's' + crypto.randomBytes(4).toString('hex'), ...s, enabled: true, starter: true });
+  }
+}
+
 const running = new Set();
 async function scanOrg(org, { email = false, reason = 'manual', appBase = process.env.PUBLIC_URL } = {}) {
   if (running.has(org.token)) return null;
   running.add(org.token);
   try {
-    const summary = await grants.runScan(org, { log: m => log(`[${org.profile.orgName || org.token.slice(0, 6)}] ${m}`) });
+    const tag = m => log(`[${org.profile.orgName || org.token.slice(0, 6)}] ${m}`);
+    const summary = await grants.runScan(org, { log: tag });
+    try {
+      const other = await sources.runOtherSources(org, { log: tag });
+      org.lastOther = { at: new Date().toISOString(), pages: other.pages, aiCalls: other.aiCalls, found: other.found, errors: other.errors.slice(0, 10), skipped: other.skipped };
+      summary.newIds.push(...other.newIds);
+      summary.errors.push(...other.errors);
+      summary.kept = Object.keys(org.grants).length;
+    } catch (e) { tag(`other sources failed: ${e.message}`); }
     org.updatedAt = new Date().toISOString();
     await store.save();
     log(`scan (${reason}) ${org.profile.orgName}: kept ${summary.kept}, new ${summary.newIds.length}, errors ${summary.errors.length}`);
@@ -158,6 +184,8 @@ app.get('/api/options', (req, res) => res.json({
   focusAreas: cfg.FOCUS_AREAS,
   populations: cfg.POPULATIONS.map(({ key, label }) => ({ key, label })),
   statusOptions: cfg.STATUS_OPTIONS,
+  sourceTypes: sources.SOURCE_TYPES,
+  capabilities: sources.capabilities(),
   emailEnabled: !!process.env.SMTP_URL,
   allowSignup: ALLOW_SIGNUP
 }));
@@ -165,6 +193,7 @@ app.get('/api/options', (req, res) => res.json({
 app.post('/api/orgs', async (req, res) => {
   if (!ALLOW_SIGNUP) return res.status(403).json({ error: 'New sign-ups are disabled on this server.' });
   const org = store.createOrg(cleanProfile(req.body));
+  addStarterSources(org);
   await store.save();
   await scanOrg(org, { reason: 'signup' });
   res.json(orgView(org, req));
@@ -182,6 +211,7 @@ app.get('/api/orgs/:token', withOrg((org, req, res) => res.json(orgView(org, req
 
 app.put('/api/orgs/:token', withOrg(async (org, req, res) => {
   org.profile = cleanProfile(req.body);
+  addStarterSources(org);
   await store.save();
   await scanOrg(org, { reason: 'profile update' });
   res.json(orgView(org, req));
@@ -222,6 +252,33 @@ app.post('/api/orgs/:token/manual', withOrg(async (org, req, res) => {
 
 app.delete('/api/orgs/:token/manual/:id', withOrg(async (org, req, res) => {
   org.manual = (org.manual || []).filter(m => m.id !== req.params.id);
+  await store.save();
+  res.json(orgView(org, req));
+}));
+
+const SOURCE_KEYS = sources.SOURCE_TYPES.map(t => t.key).filter(k => k !== 'federal');
+app.post('/api/orgs/:token/sources', withOrg(async (org, req, res) => {
+  const url = grants.safeUrl(req.body.url);
+  if (!url) return res.status(400).json({ error: 'Enter a valid web address (https://…)' });
+  org.sources = org.sources || [];
+  if (org.sources.some(x => x.url === url)) return res.status(400).json({ error: 'That page is already on your list' });
+  if (org.sources.length >= 40) return res.status(400).json({ error: 'You can watch up to 40 pages' });
+  const type = SOURCE_KEYS.includes(req.body.type) ? req.body.type : 'foundation';
+  org.sources.push({ id: 's' + crypto.randomBytes(4).toString('hex'), url, label: String(req.body.label || '').slice(0, 100) || new URL(url).hostname, type, enabled: true });
+  await store.save();
+  res.json(orgView(org, req));
+}));
+
+app.patch('/api/orgs/:token/sources/:id', withOrg(async (org, req, res) => {
+  const src = (org.sources || []).find(x => x.id === req.params.id);
+  if (!src) return res.status(404).json({ error: 'Source not found' });
+  if (req.body.enabled !== undefined) src.enabled = !!req.body.enabled;
+  await store.save();
+  res.json(orgView(org, req));
+}));
+
+app.delete('/api/orgs/:token/sources/:id', withOrg(async (org, req, res) => {
+  org.sources = (org.sources || []).filter(x => x.id !== req.params.id);
   await store.save();
   res.json(orgView(org, req));
 }));

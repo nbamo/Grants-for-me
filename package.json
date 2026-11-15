@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "scan": "node -e \"require('./src/server').dailyJob().then(() => process.exit(0))\"",
-    "test": "node test/run-tests.js"
+    "test": "node test/run-tests.js && node test/sources-test.js"
   },
   "engines": { "node": ">=20" },
   "license": "MIT",

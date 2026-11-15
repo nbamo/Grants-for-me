@@ -43,7 +43,10 @@ function eventLines(g, { reminders = [14, 7, 1], host = 'grants-for-me' } = {}) 
     g.number ? 'Opportunity #: ' + g.number : '',
     g.ceiling ? 'Award ceiling: ' + money(g.ceiling) : (g.amount ? 'Amount: ' + g.amount : ''),
     g.myStatus ? 'Your status: ' + g.myStatus : '',
-    g.link ? 'Details: ' + g.link : '',
+    g.applyUrl ? (g.oppStatus === 'Forecasted' ? 'Listing (apply when it opens): ' : 'Apply: ') + g.applyUrl : (g.link ? (isManual ? 'Apply: ' : 'Details: ') + g.link : ''),
+    g.programUrl ? (g.programUrlLabel || 'Agency site') + ': ' + g.programUrl : '',
+    g.website ? 'Funder website: ' + g.website : '',
+    g.contactEmail || g.contactName ? 'Contact: ' + [g.contactName, g.contactEmail, g.contactPhone].filter(Boolean).join(' · ') : '',
     g.notes ? 'Notes: ' + g.notes : ''
   ].filter(Boolean);
   descParts.push('', 'Tracked by Grants for Me. Always confirm the deadline and time zone on the official listing.');

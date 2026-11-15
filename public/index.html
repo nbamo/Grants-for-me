@@ -72,6 +72,14 @@
   .summary{font-size:13.5px;color:var(--ink-2);margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .side{display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:150px}
   .side select{width:150px;padding:7px 10px}
+  .links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:13.5px;align-items:center}
+  .links a{text-decoration:none;font-weight:600} .links a:hover{text-decoration:underline}
+  .links a.apply{background:var(--brand);color:#fff;padding:5px 12px;border-radius:8px}
+  .links a.apply:hover{background:var(--brand-2);text-decoration:none}
+  .links a.apply.fc{background:#6941c6}
+  .links .contact{color:var(--ink-2);font-weight:400}
+  .ready{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;margin-bottom:18px}
+  .ready ol{margin:8px 0 0;padding-left:20px} .ready li{margin:4px 0}
   .empty{text-align:center;padding:40px;color:var(--ink-2)}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none}
   .toast.on{opacity:1}
@@ -222,6 +230,21 @@ function dueBox(g){
   return `<div class="due ${cls}"><b>${g.daysLeft<0 ? 'Past' : g.daysLeft}</b><span>${g.daysLeft<0?'':'days left · '}${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>`;
 }
 
+function applyLinks(g){
+  const out = [];
+  const fc = g.oppStatus==='Forecasted';
+  const apply = g.applyUrl || g.link;
+  if(apply) out.push(`<a class="apply ${fc?'fc':''}" href="${esc(apply)}" target="_blank" rel="noopener" title="${fc?'Not open yet. Bookmark it and apply when it opens':'Open the official listing, then Apply on the Package tab'}">${fc?'View forecast ↗':(g.manual?'Apply ↗':'Apply on Grants.gov ↗')}</a>`);
+  if(g.programUrl) out.push(`<a href="${esc(g.programUrl)}" target="_blank" rel="noopener">${esc(g.programUrlLabel||'Agency program page')} ↗</a>`);
+  (g.extraLinks||[]).forEach(l=>out.push(`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`));
+  if(g.website) out.push(`<a href="${esc(g.website)}" target="_blank" rel="noopener">Funder website ↗</a>`);
+  if(g.documentCount) out.push(`<a href="${esc(apply)}" target="_blank" rel="noopener">${g.documentCount} application document${g.documentCount===1?'':'s'}</a>`);
+  if(g.contactEmail) out.push(`<a href="mailto:${esc(g.contactEmail)}?subject=${encodeURIComponent('Question about '+(g.number||g.title))}">✉ Email ${esc(g.contactName||'program officer')}</a>`);
+  else if(g.contactName) out.push(`<span class="contact">Contact: ${esc(g.contactName)}</span>`);
+  if(g.contactPhone) out.push(`<span class="contact">☎ ${esc(g.contactPhone)}</span>`);
+  return out.length ? `<div class="links">${out.join('')}</div>` : '';
+}
+
 function grantCard(g, isNew){
   const tags = [];
   if(isNew) tags.push('<span class="tag new">New</span>');
@@ -235,6 +258,7 @@ function grantCard(g, isNew){
       <div class="meta">${esc(g.agency)}${g.number?' · '+esc(g.number):''}${g.ceiling?' · up to <b>'+money(g.ceiling)+'</b>':''}${g.deadline?' · due '+esc(g.deadline):''}</div>
       <div class="tags">${tags.join('')}</div>
       ${g.summary?`<div class="summary">${esc(g.summary)}</div>`:''}
+      ${applyLinks(g)}
     </div>
     <div class="side">
       <select data-status="${esc(g.id)}" aria-label="Your status">${OPTS.statusOptions.map(s=>`<option ${g.myStatus===s?'selected':''}>${s}</option>`).join('')}</select>
@@ -288,6 +312,15 @@ function renderDash(fresh){
         <a class="btn" href="${esc(v.links.download)}">Download .ics</a>
       </div>
     </div>
+    <details class="ready" ${v.grants.some(g=>['Applying','Reviewing'].includes(g.myStatus))?'open':''}>
+      <summary><b>Before you apply to a federal grant</b> <span class="muted">· one-time setup, which can take 2–4 weeks, so start early</span></summary>
+      <ol>
+        <li><b>Register your organization in SAM.gov</b> to get your Unique Entity ID (UEI). It's free and must be renewed every year: <a href="https://sam.gov" target="_blank" rel="noopener">sam.gov ↗</a></li>
+        <li><b>Create a Grants.gov applicant account</b> (it signs in with Login.gov) and link it to your UEI: <a href="https://www.grants.gov" target="_blank" rel="noopener">grants.gov ↗</a></li>
+        <li><b>Have your organization's E-Business POC</b> give you the "Authorized Organization Representative" role so you can submit.</li>
+        <li>On a grant's listing, click <b>Apply</b> (Package tab) to start a Workspace, then download the <b>Related Documents</b> (the full notice of funding opportunity) before writing.</li>
+      </ol>
+    </details>
     <div class="toolbar">
       <div class="seg">${[['all','All'],['strong','Strong'],['broader','Broader'],['forecast','Forecasted'],['working','My pipeline'],['hidden','Not a fit']].map(([k,l])=>`<button data-f="${k}" class="${filter===k?'on':''}">${l}</button>`).join('')}</div>
       <input type="text" id="search" placeholder="Search titles & agencies" value="${esc(query)}">
@@ -303,10 +336,12 @@ function renderDash(fresh){
         <input type="text" id="mFunder" placeholder="Funder">
         <input type="date" id="mDeadline">
         <input type="text" id="mAmount" placeholder="Amount">
-        <input type="url" id="mLink" placeholder="Link (optional)" style="grid-column:1/4">
-        <button class="btn primary" id="mAdd">Add</button>
+        <input type="url" id="mLink" placeholder="Application link (where you apply)" style="grid-column:1/3">
+        <input type="url" id="mWebsite" placeholder="Funder website">
+        <input type="email" id="mContact" placeholder="Contact email">
+        <button class="btn primary" id="mAdd" style="grid-column:4">Add</button>
       </div>
-      <div class="mlist">${v.manual.map(m=>`<div class="grant">${dueBox(m)}<div><h3>${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.title)}</a>`:esc(m.title)}</h3><div class="meta">${esc(m.funder)}${m.amount?' · '+esc(m.amount):''} · due ${esc(m.deadline)}</div></div><div class="side"><button class="btn" data-del="${esc(m.id)}">Remove</button></div></div>`).join('')}</div>
+      <div class="mlist">${v.manual.map(m=>`<div class="grant">${dueBox(m)}<div><h3>${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.title)}</a>`:esc(m.title)}</h3><div class="meta">${esc(m.funder)}${m.amount?' · '+esc(m.amount):''} · due ${esc(m.deadline)}</div>${applyLinks({...m, manual:true})}</div><div class="side"><button class="btn" data-del="${esc(m.id)}">Remove</button></div></div>`).join('')}</div>
     </details>
     <p class="tiny" style="margin-top:30px">Federal opportunities come from Grants.gov. This product uses the Grants.gov API but is not endorsed or certified by HHS. Always confirm eligibility and deadlines on the official listing.</p>`;
 
@@ -319,7 +354,7 @@ function renderDash(fresh){
     try { VIEW = await api('PATCH','/api/orgs/'+v.token+'/grants/'+encodeURIComponent(sel.dataset.status), {myStatus: sel.value}); renderDash(); toast('Status saved · calendar updates on next sync'); } catch(e){ toast(e.message); }
   });
   $('#mAdd').onclick = async () => {
-    const body = { title: $('#mTitle').value, funder: $('#mFunder').value, deadline: $('#mDeadline').value, amount: $('#mAmount').value, link: $('#mLink').value };
+    const body = { title: $('#mTitle').value, funder: $('#mFunder').value, deadline: $('#mDeadline').value, amount: $('#mAmount').value, link: $('#mLink').value, website: $('#mWebsite').value, contactEmail: $('#mContact').value };
     if(!body.title || !body.deadline) return toast('Add a name and a deadline');
     try { VIEW = await api('POST','/api/orgs/'+v.token+'/manual', body); renderDash(); toast('Added to your calendar feed'); } catch(e){ toast(e.message); }
   };

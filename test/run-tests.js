@@ -39,7 +39,13 @@ async function fakeFetch(url, opts) {
   if (url.endsWith('fetchOpportunity')) {
     const g = DB[String(body.opportunityId)];
     if (g.oppStatus === 'forecasted') return ok({ forecast: { awardCeiling: String(g.ceiling), forecastDesc: '<p>Forecast &amp; details</p>', estApplicationResponseDate: mmddyyyy(g.est) } });
-    return ok({ synopsis: { awardCeiling: String(g.ceiling), awardFloor: '1000', synopsisDesc: '<p>Funding for <b>' + g.title + '</b></p>', applicantEligibilityDesc: 'Nonprofits' } });
+    return ok({
+      synopsis: { awardCeiling: String(g.ceiling), awardFloor: '1000', synopsisDesc: '<p>Funding for <b>' + g.title + '</b></p>', applicantEligibilityDesc: 'Nonprofits',
+        agencyContactName: 'Pat Officer', agencyContactEmail: 'pat.officer@acl.hhs.gov', agencyContactPhone: '202-555-0100',
+        fundingDescLinkUrl: g.id === 1001 ? 'https://acl.gov/grants/caregiver-innovation' : '', fundingDescLinkDesc: g.id === 1001 ? 'ACL program page' : '' },
+      synopsisDocumentURLs: g.id === 1005 ? [{ url: 'javascript:alert(1)', description: 'bad' }, { url: 'https://nih.gov/foa', description: 'Full NOFO' }] : [],
+      synopsisAttachmentFolders: [{ folderName: 'Full Announcement', synopsisAttachments: [{ id: 1 }, { id: 2 }] }]
+    });
   }
   return { ok: false, status: 404, json: async () => ({}) };
 }
@@ -69,6 +75,15 @@ async function fakeFetch(url, opts) {
   assert.strictEqual(org.grants['1001'].deadline, plus(45));
   assert.strictEqual(org.grants['1001'].ceiling, 250000);
   assert.ok(org.grants['1001'].matchedOn.includes('caregiver') && org.grants['1001'].matchedOn.includes('focus area'));
+  // application links
+  const g1 = org.grants['1001'];
+  assert.strictEqual(g1.applyUrl, 'https://www.grants.gov/search-results-detail/1001');
+  assert.strictEqual(g1.programUrl, 'https://acl.gov/grants/caregiver-innovation');
+  assert.strictEqual(g1.programUrlLabel, 'ACL program page');
+  assert.strictEqual(g1.contactEmail, 'pat.officer@acl.hhs.gov');
+  assert.strictEqual(g1.contactName, 'Pat Officer');
+  assert.strictEqual(g1.documentCount, 2);
+  assert.strictEqual(org.grants['1005'].programUrl, 'https://nih.gov/foa', 'unsafe javascript: link rejected, next valid link used');
   assert.strictEqual(org.grants['1004'].oppStatus, 'Forecasted');
   assert.strictEqual(org.grants['1004'].deadline, plus(120), 'forecast date taken from details');
   assert.strictEqual(org.grants['1004'].summary, 'Forecast & details');
@@ -100,11 +115,16 @@ async function fakeFetch(url, opts) {
   assert.ok(ics.includes('X-WR-CALNAME:Grant Deadlines – Test\\, Care'));
   for (const line of ics.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75, 'line too long: ' + line);
   assert.ok(!/[^\r]\n/.test(ics), 'bare LF found');
+  const unfolded = ics.replace(/\r\n /g, '');
+  assert.ok(unfolded.includes('Apply: https://www.grants.gov/search-results-detail/1001'));
+  assert.ok(unfolded.includes('ACL program page: https://acl.gov/grants/caregiver-innovation'));
+  assert.ok(unfolded.includes('Contact: Pat Officer · pat.officer@acl.hhs.gov'));
 
   // --- digest
   const d = buildDigest(org, s1, 'https://grants.example.org/?org=t');
   assert.ok(d.subject.includes('2 new grants') /* 1005 marked Not a fit */, d.subject);
   assert.ok(d.html.includes('Family Caregiver Support Innovation Grants'));
+  assert.ok(d.html.includes('>Apply</a>') && d.html.includes('mailto:pat.officer@acl.hhs.gov'));
 
   // --- HTTP API end-to-end (with mocked Grants.gov)
   const realFetch = global.fetch;
@@ -132,8 +152,12 @@ async function fakeFetch(url, opts) {
   assert.ok(r.body.includes('BEGIN:VEVENT'));
   r = await http('PATCH', `/api/orgs/${view.token}/grants/1005`, { myStatus: 'Reviewing' });
   assert.strictEqual(r.body.grants.find(g => g.id === '1005').myStatus, 'Reviewing');
-  r = await http('POST', `/api/orgs/${view.token}/manual`, { title: 'County Grant', deadline: plus(30), funder: 'County' });
+  r = await http('POST', `/api/orgs/${view.token}/manual`, { title: 'County Grant', deadline: plus(30), funder: 'County', link: 'https://county.gov/apply', website: 'county.gov', contactEmail: 'grants@county.gov' });
   assert.strictEqual(r.body.manual.length, 1);
+  assert.strictEqual(r.body.manual[0].link, 'https://county.gov/apply');
+  assert.strictEqual(r.body.manual[0].website, 'https://county.gov', 'bare domain gets https://');
+  assert.strictEqual(r.body.manual[0].contactEmail, 'grants@county.gov');
+  assert.ok(r.body.grants.find(g => g.id === '1001').applyUrl);
   r = await http('GET', `/cal/${view.token}/1001.ics`);
   assert.strictEqual(r.status, 200);
   r = await http('GET', '/cal/nope.ics');

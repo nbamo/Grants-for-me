@@ -109,10 +109,49 @@ function toNumber(v) {
   return isFinite(n) && n > 0 ? n : null;
 }
 
+const DETAILS_VERSION = 2;
+
+function safeUrl(u) {
+  if (!u) return '';
+  let v = String(u).trim();
+  if (!/^[a-z]+:/i.test(v) && /^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(v)) v = 'https://' + v;
+  return /^https?:\/\/[^\s"'<>]+$/i.test(v) ? v : '';
+}
+function safeEmail(e) {
+  const v = String(e || '').trim().replace(/^mailto:/i, '');
+  return /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(v) ? v : '';
+}
+
+// Pull application/contact links out of a fetchOpportunity record.
+function extractApplyInfo(data, s) {
+  let programUrl = safeUrl(s.fundingDescLinkUrl || data.fundingDescLinkUrl || s.additionalInfoUrl);
+  let programUrlLabel = stripHtml(s.fundingDescLinkDesc || data.fundingDescLinkDesc || '').slice(0, 80);
+  const docLinks = [];
+  for (const d of data.synopsisDocumentURLs || []) {
+    const url = safeUrl(d && (d.url || d.docUrl || d.documentUrl || d.urlLink));
+    if (url) docLinks.push({ url, label: stripHtml(d.description || d.urlDesc || d.title || '').slice(0, 80) || 'Related link' });
+  }
+  if (!programUrl && docLinks.length) { programUrl = docLinks[0].url; programUrlLabel = docLinks[0].label; }
+  let documentCount = 0;
+  for (const f of data.synopsisAttachmentFolders || []) documentCount += (f.synopsisAttachments || []).length;
+  const email = safeEmail(s.agencyContactEmail);
+  return {
+    programUrl,
+    programUrlLabel: programUrlLabel || (programUrl ? 'Agency program page' : ''),
+    extraLinks: docLinks.filter(d => d.url !== programUrl).slice(0, 3),
+    documentCount,
+    contactName: stripHtml(s.agencyContactName || '').slice(0, 80),
+    contactEmail: email,
+    contactPhone: stripHtml(s.agencyContactPhone || '').replace(/^TBD-?$/i, '').slice(0, 40)
+  };
+}
+
 async function fetchDetails(id, fetchImpl = fetch) {
   const data = await postJson(FETCH_URL, { opportunityId: Number(id) }, fetchImpl);
   const s = data.synopsis || data.forecast || {};
   return {
+    version: DETAILS_VERSION,
+    ...extractApplyInfo(data, s),
     ceiling: toNumber(s.awardCeiling),
     floor: toNumber(s.awardFloor),
     summary: stripHtml(s.synopsisDesc || s.forecastDesc || data.synopsisDesc || '').slice(0, 600),
@@ -169,7 +208,7 @@ async function runScan(org, { fetchImpl = fetch, today = todayIso(), log = () =>
     let deadline = parseDate(h.closeDate);
 
     // Details (award size, summary) — fetched once per grant, cached on the record.
-    let details = old && old.detailsFetched ? old.details : null;
+    let details = old && old.detailsFetched && old.details && old.details.version === DETAILS_VERSION ? old.details : null;
     if (!details && detailFetches < LIMITS.MAX_DETAIL_FETCH_PER_RUN) {
       try {
         details = await fetchDetails(id, fetchImpl);
@@ -217,6 +256,14 @@ async function runScan(org, { fetchImpl = fetch, today = todayIso(), log = () =>
       score,
       matchedOn: [...rec.keywords].concat(rec.viaCategory ? ['focus area'] : []),
       link: grantLink(id),
+      applyUrl: grantLink(id),
+      programUrl: details ? details.programUrl : '',
+      programUrlLabel: details ? details.programUrlLabel : '',
+      extraLinks: details ? details.extraLinks : [],
+      documentCount: details ? details.documentCount : 0,
+      contactName: details ? details.contactName : '',
+      contactEmail: details ? details.contactEmail : '',
+      contactPhone: details ? details.contactPhone : '',
       myStatus: old ? old.myStatus : 'New',
       notes: old ? old.notes : '',
       firstSeen: old ? old.firstSeen : today,
@@ -272,5 +319,5 @@ function sortedGrants(org) {
 
 module.exports = {
   runScan, buildQueries, searchKeywords, eligibilityCodes, parseDate, daysBetween, todayIso,
-  calendarGrants, sortedGrants, fetchDetails, stripHtml, TZ
+  calendarGrants, sortedGrants, fetchDetails, stripHtml, safeUrl, safeEmail, TZ
 };

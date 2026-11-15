@@ -20,7 +20,13 @@ function row(g, today) {
   return `<tr><td style="padding:10px 0;border-bottom:1px solid #eaecf0">
     <a href="${h(g.link)}" style="color:#1d4ed8;font-weight:600;text-decoration:none">${h(g.title)}</a><br>
     <span style="color:#475467;font-size:13px">${h(g.agency || g.funder || '')}${g.ceiling ? ' · up to ' + money(g.ceiling) : ''}</span><br>
-    <span style="font-size:13px">${when}</span></td></tr>`;
+    <span style="font-size:13px">${when}</span><br>
+    <span style="font-size:13px">${[
+      g.applyUrl || g.link ? `<a href="${h(g.applyUrl || g.link)}" style="color:#1f5f4a;font-weight:600">${g.oppStatus === 'Forecasted' ? 'View listing' : 'Apply'}</a>` : '',
+      g.programUrl ? `<a href="${h(g.programUrl)}" style="color:#1d4ed8">Agency site</a>` : '',
+      g.website ? `<a href="${h(g.website)}" style="color:#1d4ed8">Funder website</a>` : '',
+      g.contactEmail ? `<a href="mailto:${h(g.contactEmail)}" style="color:#1d4ed8">Email ${h(g.contactName || 'program officer')}</a>` : ''
+    ].filter(Boolean).join(' &nbsp;·&nbsp; ')}</span></td></tr>`;
 }
 
 function buildDigest(org, summary, appUrl) {

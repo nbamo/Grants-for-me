@@ -212,7 +212,8 @@ app.post('/api/orgs/:token/manual', withOrg(async (org, req, res) => {
   org.manual.push({
     id: 'm' + crypto.randomBytes(5).toString('hex'),
     title: String(b.title).slice(0, 200), funder: String(b.funder || '').slice(0, 120),
-    deadline, amount: String(b.amount || '').slice(0, 40), link: String(b.link || '').slice(0, 500),
+    deadline, amount: String(b.amount || '').slice(0, 40), link: grants.safeUrl(b.link), website: grants.safeUrl(b.website),
+    contactEmail: grants.safeEmail(b.contactEmail),
     notes: String(b.notes || '').slice(0, 1000), oppStatus: 'Manual', myStatus: 'Applying'
   });
   await store.save();
